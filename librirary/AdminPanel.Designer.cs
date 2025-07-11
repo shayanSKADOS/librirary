@@ -142,7 +142,7 @@
             btnLogoutMC.TabIndex = 9;
             btnLogoutMC.Text = "Logout";
             btnLogoutMC.UseVisualStyleBackColor = true;
-            btnLogoutMC.Click += btnLogoutMC_Click;
+            btnLogoutMC.Click += btnLogout_Click;
             // 
             // checkIsAdmin
             // 
@@ -248,7 +248,7 @@
             button2AbtnLogoutBC.TabIndex = 12;
             button2AbtnLogoutBC.Text = "Logout";
             button2AbtnLogoutBC.UseVisualStyleBackColor = true;
-            button2AbtnLogoutBC.Click += button2AbtnLogoutBC_Click;
+            button2AbtnLogoutBC.Click += btnLogout_Click;
             // 
             // btnRefreshBooks
             // 
@@ -382,7 +382,7 @@
             btnLogoutCO.TabIndex = 12;
             btnLogoutCO.Text = "Logout";
             btnLogoutCO.UseVisualStyleBackColor = true;
-            btnLogoutCO.Click += btnLogoutCO_Click;
+            btnLogoutCO.Click += btnLogout_Click;
             // 
             // cmbBooks
             // 

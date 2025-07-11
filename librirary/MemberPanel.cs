@@ -26,25 +26,18 @@ namespace Library
 
         private void MemberPanel_Load(object sender, EventArgs e)
         {
+            RefreshHelloMessage();
+            RefreshLoanedBooks();
+            RefreshAllBooks();
+        }
+
+        private void RefreshHelloMessage()
+        {
             memberName.Text = "Welcome " + _member.Name;
+        }
 
-            var loanedBooks = _dbContext.Bookloans.Include(l => l.BookCopy).Include(l => l.BookCopy.Book);
-            var loanedBooksByMember = loanedBooks
-                .Where(loaned => loaned.MembrId == _member.Id)
-                .Where(loaned => !loaned.BookCopy.IsAvailable!.Value)
-                .Where(loaned => !loaned.ReturnDate.HasValue);
-
-            foreach (var book in loanedBooksByMember)
-            {
-                string[] bookList =
-                {
-                    book.BookCopy.Book.Title,
-                    book.LoanDate.ToString()
-                };
-                var item = new ListViewItem(bookList);
-                listViewLoanedBooks.Items.Add(item);
-            }
-
+        private void RefreshAllBooks()
+        {
             var books = _dbContext.Books.Include(b => b.Bookcopies);
             foreach (var book in books)
             {
@@ -60,6 +53,22 @@ namespace Library
                 };
                 var item = new ListViewItem(bookList);
                 listViewAvailableBooks.Items.Add(item);
+            }
+        }
+
+        private void RefreshLoanedBooks()
+        {
+            IQueryable<Bookloan> loanedBooksByMember = MemberService.GetLoanedBooksOfMember(_member.Id);
+
+            foreach (var book in loanedBooksByMember)
+            {
+                string[] bookList =
+                {
+                    book.BookCopy.Book.Title,
+                    book.LoanDate.ToString()
+                };
+                var item = new ListViewItem(bookList);
+                listViewLoanedBooks.Items.Add(item);
             }
         }
 

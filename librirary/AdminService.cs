@@ -1,11 +1,17 @@
 ﻿namespace Library;
 
-public class AdminService
+public static class AdminService
 {
-
-    public void CreateAdminIfNotExists()
+    public static Admin? Login(string username, string password)
     {
-        LibraryContext dbContext = new LibraryContext();
+        var dbContext = new LibraryContext();
+        var hashedPassword = Hashing.QuickHash(password);
+        return dbContext.Admins.SingleOrDefault(admin => admin.Username == username && admin.Password == hashedPassword);
+    }
+
+    public static void CreateAdminIfNotExists()
+    {
+        var dbContext = new LibraryContext();
         if (!dbContext.Admins.Any(admin => admin.Username == "admin"))
         {
             var hashedPassword = Hashing.QuickHash("123");

@@ -4,7 +4,6 @@ namespace Library
 {
     public partial class LoginForm : Form
     {
-        private LibraryContext _dbContext = new();
         public LoginForm()
         {
             InitializeComponent();
@@ -12,25 +11,37 @@ namespace Library
 
         private void btnLogin_Click(object sender, EventArgs e)
         {
-            var hashedPassword = Hashing.QuickHash(txtPassword.Text);
-
-            if (_dbContext.Admins.Any(admin => admin.Username == txtUsername.Text && admin.Password == hashedPassword))
+            var loggedInAdmin = AdminService.Login(txtUsername.Text, txtPassword.Text);
+            if (loggedInAdmin != null)
             {
-                var adminPanel = new AdminPanel();
-                adminPanel.FormClosed += Panel_FormClosed;
-                adminPanel.Show();
-                this.Hide();
+                ShowAdminPanel();
+                return;
             }
 
-            var userMember = _dbContext.Members.SingleOrDefault(member => member.Username == txtUsername.Text);
-            if (userMember != null && userMember.Password == hashedPassword)
+            var loggedInMember = MemberService.Login(txtUsername.Text, txtPassword.Text);
+            if (loggedInMember != null)
             {
-                var memberPanel = new MemberPanel(userMember);
-                memberPanel.FormClosed += Panel_FormClosed;
-                memberPanel.Show();
-                this.Hide();
+                ShowMemberPanel(loggedInMember);
+                return;
             }
 
+            MessageBox.Show("Username or password is incorrect");
+        }
+
+        private void ShowMemberPanel(Member loggedInMember)
+        {
+            var memberPanel = new MemberPanel(loggedInMember);
+            memberPanel.FormClosed += Panel_FormClosed;
+            memberPanel.Show();
+            this.Hide();
+        }
+
+        private void ShowAdminPanel()
+        {
+            var adminPanel = new AdminPanel();
+            adminPanel.FormClosed += Panel_FormClosed;
+            adminPanel.Show();
+            this.Hide();
         }
 
         private void Panel_FormClosed(object? sender, FormClosedEventArgs e)
@@ -43,6 +54,11 @@ namespace Library
         {
             txtUsername.Text = "";
             txtPassword.Text = "";
+        }
+
+        private void LoginForm_Load(object sender, EventArgs e)
+        {
+            AdminService.CreateAdminIfNotExists();
         }
     }
 }

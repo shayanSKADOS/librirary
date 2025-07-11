@@ -6,7 +6,7 @@ namespace Library
 {
     public partial class AdminPanel : Form
     {
-        private LibraryContext _dbContext = new LibraryContext();
+        private readonly LibraryContext _dbContext = new LibraryContext();
         public AdminPanel()
         {
             InitializeComponent();
@@ -14,59 +14,81 @@ namespace Library
 
         private void btnAddMember_Click(object sender, EventArgs e)
         {
-            var hashedPassword = Hashing.QuickHash(txtPassword.Text);
-            if (!_dbContext.Admins.Any(admin => admin.Username == txtUserName.Text) && _dbContext.Members.SingleOrDefault(member => member.Username == txtUserName.Text) == null)
+            if (txtUserName.Text == "" || txtPassword.Text == "")
             {
-                if (checkIsAdmin.Checked)
-                {
-                    if (txtUserName.Text == "" || txtPassword.Text == "")
-                    {
-                        MessageBox.Show("Username or Password is not filled!");
-                    }
-                    else
-                    {
-                        var newAdmin = new Admin()
-                        {
-                            Username = txtUserName.Text,
-                            Password = hashedPassword,
-                        };
-                        _dbContext.Admins.Add(newAdmin);
-                    }
-                }
-                else if (!checkIsAdmin.Checked)
-                {
-                    if (txtUserName.Text == "" || txtPassword.Text == "" || txtName.Text == "" || txtPhone.Text == "")
-                    {
-                        MessageBox.Show("You should fill all boxes!");
-                    }
-                    else
-                    {
-                        var newMember = new Member()
-                        {
-                            Name = txtName.Text,
-                            Username = txtUserName.Text,
-                            Password = hashedPassword,
-                            Phone = Int32.Parse(txtPhone.Text),
-                        };
-                        _dbContext.Members.Add(newMember);
-                    }
-                }
+                MessageBox.Show("Username or Password is not filled!");
+                return;
             }
-            else MessageBox.Show("This username is used!");
 
-            txtName.Clear(); txtUserName.Clear(); txtPhone.Clear(); txtPassword.Clear();
+            if (IsThereAnyAdminOrMemberWithThisUsername(txtUserName.Text))
+            {
+                MessageBox.Show("This username is used!");
+                return;
+            }
+
+            var hashedPassword = Hashing.QuickHash(txtPassword.Text);
+            if (checkIsAdmin.Checked)
+            {
+                var newAdmin = new Admin()
+                {
+                    Username = txtUserName.Text,
+                    Password = hashedPassword,
+                };
+                _dbContext.Admins.Add(newAdmin);
+            }
+            else
+            {
+                var newMember = new Member()
+                {
+                    Name = txtName.Text,
+                    Username = txtUserName.Text,
+                    Password = hashedPassword,
+                    Phone = Int32.Parse(txtPhone.Text),
+                };
+                _dbContext.Members.Add(newMember);
+            }
+
             _dbContext.SaveChanges();
+            ClearInputs();
             RefreshMembers();
+            RefreshCmbMembers();
+        }
+
+        private void RefreshCmbMembers()
+        {
             cmbMembers.Items.Clear();
-            cmbMembers.Items.AddRange(_dbContext.Members.Select(m => m.Id + ". " + m.Name).ToArray());
+            var members = _dbContext.Members.Select(m => m.Id + ". " + m.Name).ToArray();
+            cmbMembers.Items.AddRange(members);
+            if (members.Length != 0)
+            {
+                cmbMembers.SelectedIndex = 0;
+            }
+        }
+
+        private void ClearInputs()
+        {
+            txtName.Clear();
+            txtUserName.Clear();
+            txtPhone.Clear();
+            txtPassword.Clear();
+        }
+
+        private bool IsThereAnyAdminOrMemberWithThisUsername(string username)
+        {
+            return _dbContext.Admins.Any(admin => admin.Username == username) || _dbContext.Members.Any(member => member.Username == username);
         }
 
         private void txtPhone_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            if (!IsKeyDigitOrControl(e.KeyChar))
             {
                 e.Handled = true;
             }
+        }
+
+        private static bool IsKeyDigitOrControl(char key)
+        {
+            return char.IsControl(key) || char.IsDigit(key);
         }
 
         private void btnRefreshMembers_Click(object sender, EventArgs e)
@@ -80,51 +102,30 @@ namespace Library
             memberList.Items.Clear();
             foreach (var member in members)
             {
-                string[] memberInfo = { member.Id.ToString(), member.Name, member.Phone.ToString() };
-                var item = new ListViewItem(memberInfo);
+                ListViewItem item = CreateListViewItemBasedOnMember(member);
                 memberList.Items.Add(item);
             }
         }
 
+        private static ListViewItem CreateListViewItemBasedOnMember(Member member)
+        {
+            return new ListViewItem([member.Id.ToString(), member.Name, member.Phone.ToString()]);
+        }
+
         private void AddBook_Click(object sender, EventArgs e)
         {
-            if (_dbContext.Books.SingleOrDefault(book => book.Title == txtTitle.Text) == null)
+            if (!_dbContext.Books.Any(book => book.Title == txtTitle.Text))
             {
-                var book = new Book()
-                {
-                    Author = txtAuthor.Text,
-                    Title = txtTitle.Text,
-                    Category = category.Text
-                };
-                _dbContext.Books.Add(book);
-                _dbContext.SaveChanges();
-
-                for (int i = 0; i < Int32.Parse(txtAvailableNums.Text); i++)
-                {
-                    var bookCopy = new Bookcopy()
-                    {
-                        BookId = book.Id,
-                    };
-                    _dbContext.Bookcopies.Add(bookCopy);
-                }
+                BookService.CreateBook(txtTitle.Text, category.Text, txtAuthor.Text, Int32.Parse(txtAvailableNums.Text));
             }
             else
             {
                 var book = _dbContext.Books.Single(book => book.Title == txtTitle.Text);
-                for (int i = 0; i < Int32.Parse(txtAvailableNums.Text); i++)
-                {
-                    var bookCopy = new Bookcopy()
-                    {
-                        BookId = book.Id,
-                    };
-                    _dbContext.Bookcopies.Add(bookCopy);
-                }
+                BookService.AddBookCopiesForABook(book.Id, Int32.Parse(txtAvailableNums.Text));
             }
-            _dbContext.SaveChanges();
 
             RefreshBooks();
-            cmbBooks.Items.Clear();
-            cmbBooks.Items.AddRange(_dbContext.Books.Select(b => b.Id + ". " + b.Title).ToArray());
+            RefreshCmbBooks();
         }
 
         private void btnRefreshBooks_Click(object sender, EventArgs e)
@@ -158,50 +159,64 @@ namespace Library
             if (cmbMembers.Text == "" || cmbBooks.Text == "")
             {
                 MessageBox.Show("Choose member and book first!");
+                return;
             }
-            else
+
+            var books = _dbContext.Books.Include(b => b.Bookcopies);
+            var bookId = GetBookIdFromCmbBooks();
+            var book = books.SingleOrDefault(bookID => bookID.Id.ToString() == bookId);
+            if (book == null
+                || book.Bookcopies
+                .Where(bc => bc.IsAvailable != null && bc.IsAvailable.Value)
+                .Count() <= 0)
             {
-                var books = _dbContext.Books.Include(b => b.Bookcopies);
-                var bookId = cmbBooks.Text.Split('.')[0];
-                var book = books.SingleOrDefault(bookID => bookID.Id.ToString() == bookId);
-                var members = _dbContext.Members;
-                if (book != null
-                    && book.Bookcopies
-                    .Where(bc => bc.IsAvailable != null && bc.IsAvailable.Value)
-                    .Count() > 0)
-                {
-                    var availibleBook = book.Bookcopies.FirstOrDefault(bookAvailible =>
-                        bookAvailible.IsAvailable != null && bookAvailible.IsAvailable.Value);
-
-                    if (availibleBook == null)
-                    {
-                        MessageBox.Show($"Book {book.Title} is not available");
-                        return;
-                    }
-
-                    availibleBook.IsAvailable = false;
-
-                    var memberId = cmbMembers.Text.Split(".")[0];
-                    var checkOutMember = members.SingleOrDefault(member => member.Id.ToString() == memberId);
-                    if (checkOutMember == null)
-                    {
-                        MessageBox.Show($"Member with id {memberId} is not available");
-                        return;
-                    }
-
-                    var loandBook = new Bookloan()
-                    {
-                        LoanDate = DateTime.Now,
-                        BookCopy = availibleBook,
-                        Membr = checkOutMember,
-                    };
-                    _dbContext.Bookloans.Add(loandBook);
-                    _dbContext.SaveChanges();
-                    RefreshLoanedBooks();
-                }
-                else
-                    MessageBox.Show("Book copy not available!");
+                MessageBox.Show("Book copy not available!");
+                return;
             }
+
+            var availibleBookCopy = GetFirstAvailibleBookCopy(book);
+
+            if (availibleBookCopy == null)
+            {
+                MessageBox.Show($"Book {book.Title} is not available");
+                return;
+            }
+
+            availibleBookCopy.IsAvailable = false;
+
+            var memberId = GetMemberIdFromCmbMembers();
+            var checkOutMember = _dbContext.Members.SingleOrDefault(member => member.Id.ToString() == memberId);
+            if (checkOutMember == null)
+            {
+                MessageBox.Show($"Member with id {memberId} is not available");
+                return;
+            }
+
+            var loandBook = new Bookloan()
+            {
+                LoanDate = DateTime.Now,
+                BookCopy = availibleBookCopy,
+                Membr = checkOutMember,
+            };
+            _dbContext.Bookloans.Add(loandBook);
+            _dbContext.SaveChanges();
+            RefreshLoanedBooks();
+        }
+
+        private string GetMemberIdFromCmbMembers()
+        {
+            return cmbMembers.Text.Split(".")[0];
+        }
+
+        private static Bookcopy? GetFirstAvailibleBookCopy(Book book)
+        {
+            return book.Bookcopies.FirstOrDefault(bookAvailible =>
+                            bookAvailible.IsAvailable != null && bookAvailible.IsAvailable.Value);
+        }
+
+        private string GetBookIdFromCmbBooks()
+        {
+            return cmbBooks.Text.Split('.')[0];
         }
 
         private void btnRefreshLoanedBooks_Click(object sender, EventArgs e)
@@ -212,8 +227,8 @@ namespace Library
         private void RefreshLoanedBooks()
         {
             var loans = _dbContext.Bookloans.Include(l => l.Membr).Include(l => l.BookCopy).Include(l => l.BookCopy.Book);
-            loansViewList.Items.Clear();
 
+            loansViewList.Items.Clear();
             loansViewList.Items.AddRange(
                 loans.OrderBy(l => l.ReturnDate).Select(loan => CreateListViewItemBasedOnLoan(loan)).ToArray()
             );
@@ -241,18 +256,23 @@ namespace Library
                 return;
             }
 
-            var selectedLoanId = int.Parse(loansViewList.SelectedItems[0].SubItems[0].Text);
+            var selectedLoanId = GetSelectedLoanId();
+            var selectedLoan = _dbContext.Bookloans.Single(l => l.Id == selectedLoanId);
+            selectedLoan.ReturnDate = DateTime.Now;
+
             var bookCopy = _dbContext.Bookloans
                 .Where(bl => bl.Id == selectedLoanId)
                 .Select(bl => bl.BookCopy)
                 .Single();
             bookCopy.IsAvailable = true;
 
-            var selectedLoan = _dbContext.Bookloans.Single(l => l.Id == selectedLoanId);
-            selectedLoan.ReturnDate = DateTime.Now;
-
             _dbContext.SaveChanges();
             RefreshLoanedBooks();
+        }
+
+        private int GetSelectedLoanId()
+        {
+            return int.Parse(loansViewList.SelectedItems[0].SubItems[0].Text);
         }
 
         private void AdminPanel_Load(object sender, EventArgs e)
@@ -260,22 +280,22 @@ namespace Library
             RefreshBooks();
             RefreshMembers();
             RefreshLoanedBooks();
-
-            cmbBooks.Items.AddRange(_dbContext.Books.Select(b => b.Id + ". " + b.Title).ToArray());
-            cmbMembers.Items.AddRange(_dbContext.Members.Select(m => m.Id + ". " + m.Name).ToArray());
+            RefreshCmbBooks();
+            RefreshCmbMembers();
         }
 
-        private void btnLogoutMC_Click(object sender, EventArgs e)
+        private void RefreshCmbBooks()
         {
-            this.Close();
+            cmbBooks.Items.Clear();
+            var books = _dbContext.Books.Select(b => b.Id + ". " + b.Title).ToArray();
+            cmbBooks.Items.AddRange(books);
+            if (books.Length != 0)
+            {
+                cmbBooks.SelectedIndex = 0;
+            }
         }
 
-        private void button2AbtnLogoutBC_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
-
-        private void btnLogoutCO_Click(object sender, EventArgs e)
+        private void btnLogout_Click(object sender, EventArgs e)
         {
             this.Close();
         }
@@ -289,10 +309,15 @@ namespace Library
         }
         private void txtName_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (!char.IsLetter(e.KeyChar) && !char.IsControl(e.KeyChar) && e.KeyChar != ' ')
+            if (!IsKeyLetterOrControlOrSpace(e))
             {
                 e.Handled = true;
             }
+        }
+
+        private static bool IsKeyLetterOrControlOrSpace(KeyPressEventArgs e)
+        {
+            return char.IsLetter(e.KeyChar) || char.IsControl(e.KeyChar) || e.KeyChar == ' ';
         }
     }
 }

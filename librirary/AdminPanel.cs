@@ -26,26 +26,13 @@ namespace Library
                 return;
             }
 
-            var hashedPassword = Hashing.QuickHash(txtPassword.Text);
             if (checkIsAdmin.Checked)
             {
-                var newAdmin = new Admin()
-                {
-                    Username = txtUserName.Text,
-                    Password = hashedPassword,
-                };
-                _dbContext.Admins.Add(newAdmin);
+                AdminService.CreateANewAdmin(txtUserName.Text, txtPassword.Text);
             }
             else
             {
-                var newMember = new Member()
-                {
-                    Name = txtName.Text,
-                    Username = txtUserName.Text,
-                    Password = hashedPassword,
-                    Phone = Int32.Parse(txtPhone.Text),
-                };
-                _dbContext.Members.Add(newMember);
+                MemberService.CreateANewMember(txtName.Text, txtUserName.Text, txtPassword.Text, int.Parse(txtPhone.Text));
             }
 
             _dbContext.SaveChanges();

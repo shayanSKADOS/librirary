@@ -1,4 +1,6 @@
-﻿namespace Library;
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace Library;
 
 public static class AdminService
 {
@@ -22,5 +24,16 @@ public static class AdminService
             dbContext.Admins.Add(newAdmin);
             dbContext.SaveChanges();
         }
+    }
+    public static void CreateANewAdmin(string username, string password)
+    {
+        var hashedPassword = Hashing.QuickHash(password);
+        var dbContext = new LibraryContext();
+        var newAdmin = new Admin()
+        {
+            Username = username,
+            Password = hashedPassword,
+        };
+        dbContext.Admins.Add(newAdmin);
     }
 }

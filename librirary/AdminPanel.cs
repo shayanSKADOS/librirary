@@ -35,7 +35,6 @@ namespace Library
                 MemberService.CreateANewMember(txtName.Text, txtUserName.Text, txtPassword.Text, int.Parse(txtPhone.Text));
             }
 
-            _dbContext.SaveChanges();
             ClearInputs();
             RefreshMembers();
             RefreshCmbMembers();

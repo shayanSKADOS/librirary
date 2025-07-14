@@ -35,5 +35,6 @@ public static class AdminService
             Password = hashedPassword,
         };
         dbContext.Admins.Add(newAdmin);
+        dbContext.SaveChanges();
     }
 }

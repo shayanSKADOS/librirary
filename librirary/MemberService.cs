@@ -33,5 +33,6 @@ public static class MemberService
             Phone = phone
         };
         dbContext.Members.Add(newMember);
+        dbContext.SaveChanges();
     }
 }
